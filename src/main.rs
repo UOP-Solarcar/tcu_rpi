@@ -1,9 +1,10 @@
-use socketcan::{CanSocket, Socket};
+use socketcan::{embedded_can, CanSocket, Socket};
+use std::error::Error;
 
-fn main() {
-    let can_socket = CanSocket::open("can0").unwrap();
+fn main() -> Result<(), Box<dyn Error>> {
+    let mut can_socket = CanSocket::open("can0")?;
     loop {
-        if let Ok(frame) = can_socket.read_frame() {
+        if let Ok(frame) = embedded_can::nb::Can::receive(&mut can_socket) {
             println!("{:?}", frame);
         }
     }
