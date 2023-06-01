@@ -1,8 +1,17 @@
+use clap::Parser;
 use socketcan::{embedded_can, CanFrame, CanSocket, EmbeddedFrame, Id, Socket};
 use std::error::Error;
 
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// Name of CAN device
+    ifname: String,
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
-    let mut can_socket = CanSocket::open("can0")?;
+    let args = Args::parse();
+    let mut can_socket = CanSocket::open(&args.ifname)?;
     loop {
         if let Ok(frame) = embedded_can::nb::Can::receive(&mut can_socket) {
             match frame {
