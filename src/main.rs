@@ -8,9 +8,33 @@ fn main() -> Result<(), Box<dyn Error>> {
             match frame {
                 CanFrame::Data(d) => match d.id() {
                     Id::Standard(id) => match id.as_raw() {
-                        0x21 => match (&(d.data())[0..2]).try_into().map(i16::from_le_bytes) {
-                            Ok(temp) => println!("Temp: {}", (temp as f64) / 340.00 + 36.53),
-                            Err(err) => println!("{}", err),
+                        0x21 => match (
+                            d.data()[0..2].try_into().map(i16::from_le_bytes),
+                            d.data()[2..4].try_into().map(i16::from_le_bytes),
+                            d.data()[4..6].try_into().map(i16::from_le_bytes),
+                            d.data()[6..8].try_into().map(i16::from_le_bytes),
+                        ) {
+                            (Ok(temp), Ok(accel_x), Ok(accel_y), Ok(accel_z)) => {
+                                println!("Temp: {}", (temp as f64) / 340.00 + 36.53);
+                                println!(
+                                    "accelX: {} | accelY: {} | accelZ: {}",
+                                    accel_x, accel_y, accel_z
+                                );
+                            }
+                            e => println!("{:?}", e),
+                        },
+                        0x22 => match (
+                            d.data()[0..2].try_into().map(i16::from_le_bytes),
+                            d.data()[2..4].try_into().map(i16::from_le_bytes),
+                            d.data()[4..6].try_into().map(i16::from_le_bytes),
+                        ) {
+                            (Ok(gyro_x), Ok(gyro_y), Ok(gyro_z)) => {
+                                println!(
+                                    "gyroX: {} | gyroY: {} | gyroZ: {}",
+                                    gyro_x, gyro_y, gyro_z,
+                                );
+                            }
+                            e => println!("{:?}", e),
                         },
                         _ => println!("{:?}", frame),
                     },
