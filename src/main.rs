@@ -14,44 +14,74 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut can_socket = CanSocket::open(&args.ifname)?;
     loop {
         if let Ok(frame) = embedded_can::nb::Can::receive(&mut can_socket) {
-            match frame {
-                CanFrame::Data(d) => match d.id() {
-                    Id::Standard(id) => match id.as_raw() {
-                        0x21 => match (
-                            d.data()[0..2].try_into().map(i16::from_le_bytes),
-                            d.data()[2..4].try_into().map(i16::from_le_bytes),
-                            d.data()[4..6].try_into().map(i16::from_le_bytes),
-                            d.data()[6..8].try_into().map(i16::from_le_bytes),
+            match (frame, frame.id()) {
+                (CanFrame::Data(data_frame), Id::Standard(id)) => match id.as_raw() {
+                    0x21 => {
+                        match (
+                            data_frame
+                                .data()
+                                .get(0..4)
+                                .map(|f| f.try_into().map(f32::from_le_bytes)),
+                            data_frame
+                                .data()
+                                .get(4..8)
+                                .map(|f| f.try_into().map(f32::from_le_bytes)),
                         ) {
-                            (Ok(temp), Ok(accel_x), Ok(accel_y), Ok(accel_z)) => {
-                                println!("Temp: {}", (temp as f64) / 340.00 + 36.53);
-                                println!(
-                                    "accelX: {} | accelY: {} | accelZ: {}",
-                                    accel_x, accel_y, accel_z
-                                );
+                            (Some(Ok(accel_x)), Some(Ok(accel_y))) => {
+                                println!("accel x: {accel_x}, accel y: {accel_y}")
                             }
-                            e => println!("{:?}", e),
-                        },
-                        0x22 => match (
-                            d.data()[0..2].try_into().map(i16::from_le_bytes),
-                            d.data()[2..4].try_into().map(i16::from_le_bytes),
-                            d.data()[4..6].try_into().map(i16::from_le_bytes),
-                        ) {
-                            (Ok(gyro_x), Ok(gyro_y), Ok(gyro_z)) => {
-                                println!(
-                                    "gyroX: {} | gyroY: {} | gyroZ: {}",
-                                    gyro_x, gyro_y, gyro_z,
-                                );
-                            }
-                            e => println!("{:?}", e),
-                        },
-                        _ => println!("{:?}", frame),
-                    },
-                    _ => {
-                        println!("{:?}", frame)
+                            _ => println!("{:?}", frame),
+                        }
                     }
+                    0x22 => {
+                        match (
+                            data_frame
+                                .data()
+                                .get(0..4)
+                                .map(|f| f.try_into().map(f32::from_le_bytes)),
+                            data_frame
+                                .data()
+                                .get(4..8)
+                                .map(|f| f.try_into().map(f32::from_le_bytes)),
+                        ) {
+                            (Some(Ok(accel_z)), Some(Ok(gyro_x))) => {
+                                println!("accel z: {accel_z}, gyro x: {gyro_x}")
+                            }
+                            _ => println!("{:?}", frame),
+                        }
+                    }
+                    0x23 => {
+                        match (
+                            data_frame
+                                .data()
+                                .get(0..4)
+                                .map(|f| f.try_into().map(f32::from_le_bytes)),
+                            data_frame
+                                .data()
+                                .get(4..8)
+                                .map(|f| f.try_into().map(f32::from_le_bytes)),
+                        ) {
+                            (Some(Ok(gyro_y)), Some(Ok(gyro_z))) => {
+                                println!("gyro y: {gyro_y}, gyro z: {gyro_z}")
+                            }
+                            _ => println!("{:?}", frame),
+                        }
+                    }
+                    0x24 => {
+                        match (data_frame
+                            .data()
+                            .get(0..4)
+                            .map(|f| f.try_into().map(f32::from_le_bytes)),)
+                        {
+                            (Some(Ok(temp)),) => {
+                                println!("temp: {temp}")
+                            }
+                            _ => println!("{:?}", frame),
+                        }
+                    }
+                    _ => println!("{:?}", frame),
                 },
-                f => println!("{:?}", f),
+                (_, _) => println!("{:?}", frame),
             }
         }
     }
