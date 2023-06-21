@@ -1,5 +1,5 @@
 use clap::Parser;
-use socketcan::{embedded_can, CanFrame, CanSocket, EmbeddedFrame, Id, Socket};
+use socketcan::{BlockingCan, CanFrame, CanSocket, EmbeddedFrame, Id, Socket};
 use std::error::Error;
 
 #[derive(Parser, Debug)]
@@ -13,7 +13,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
     let mut can_socket = CanSocket::open(&args.ifname)?;
     loop {
-        if let Ok(frame) = embedded_can::nb::Can::receive(&mut can_socket) {
+        if let Ok(frame) = BlockingCan::receive(&mut can_socket) {
             match (frame, frame.id()) {
                 (CanFrame::Data(data_frame), Id::Standard(id)) => match id.as_raw() {
                     0x21 => {
@@ -79,9 +79,17 @@ fn main() -> Result<(), Box<dyn Error>> {
                             _ => println!("{:?}", frame),
                         }
                     }
-                    _ => println!("{:?}", frame),
+                    _ => println!(
+                        "{:?}{}",
+                        frame,
+                        if frame.is_extended() { " ext" } else { "" }
+                    ),
                 },
-                (_, _) => println!("{:?}", frame),
+                (_, _) => println!(
+                    "{:?}{}",
+                    frame,
+                    if frame.is_extended() { " ext" } else { "" }
+                ),
             }
         }
     }
