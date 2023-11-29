@@ -15,76 +15,39 @@ fn main() -> Result<(), Box<dyn Error>> {
     loop {
         if let Ok(frame) = BlockingCan::receive(&mut can_socket) {
             match (frame, frame.id()) {
-                (CanFrame::Data(data_frame), Id::Standard(id)) => match id.as_raw() {
-                    0x21 => {
-                        match (
-                            data_frame
-                                .data()
-                                .get(0..4)
-                                .map(|f| f.try_into().map(f32::from_le_bytes)),
-                            data_frame
-                                .data()
-                                .get(4..8)
-                                .map(|f| f.try_into().map(f32::from_le_bytes)),
-                        ) {
-                            (Some(Ok(accel_x)), Some(Ok(accel_y))) => {
-                                println!("accel x: {accel_x}, accel y: {accel_y}")
+                (CanFrame::Data(data_frame), Id::Standard(id)) => {
+                    let data = data_frame.data();
+                    match id.as_raw() {
+                        0x6B0 => {
+                            match (
+                                data.get(0..=1)
+                                    .map(|f| f.try_into().map(u16::from_be_bytes)),
+                                data.get(2..=3)
+                                    .map(|f| f.try_into().map(u16::from_be_bytes)),
+                                data.get(4),
+                                data.get(5..=6)
+                                    .map(|f| f.try_into().map(u16::from_be_bytes)),
+                                data.get(7),
+                            ) {
+                                (
+                                    Some(Ok(pack_current)),
+                                    Some(Ok(pack_inst_voltage)),
+                                    Some(&pack_soc),
+                                    Some(Ok(relay_state)),
+                                    Some(&checksum),
+                                ) => {
+                                    println!("Pack current: {pack_current}, Pack Inst. Voltage: {pack_inst_voltage}, Pack SOC: {pack_soc}, Relay State: {relay_state}, Checksum: {checksum}")
+                                }
+                                d => println!("Frame: {:?}, Results: {d:?}", frame),
                             }
-                            _ => println!("{:?}", frame),
                         }
+                        _ => println!(
+                            "{:?}{}",
+                            frame,
+                            if frame.is_extended() { " ext" } else { "" }
+                        ),
                     }
-                    0x22 => {
-                        match (
-                            data_frame
-                                .data()
-                                .get(0..4)
-                                .map(|f| f.try_into().map(f32::from_le_bytes)),
-                            data_frame
-                                .data()
-                                .get(4..8)
-                                .map(|f| f.try_into().map(f32::from_le_bytes)),
-                        ) {
-                            (Some(Ok(accel_z)), Some(Ok(gyro_x))) => {
-                                println!("accel z: {accel_z}, gyro x: {gyro_x}")
-                            }
-                            _ => println!("{:?}", frame),
-                        }
-                    }
-                    0x23 => {
-                        match (
-                            data_frame
-                                .data()
-                                .get(0..4)
-                                .map(|f| f.try_into().map(f32::from_le_bytes)),
-                            data_frame
-                                .data()
-                                .get(4..8)
-                                .map(|f| f.try_into().map(f32::from_le_bytes)),
-                        ) {
-                            (Some(Ok(gyro_y)), Some(Ok(gyro_z))) => {
-                                println!("gyro y: {gyro_y}, gyro z: {gyro_z}")
-                            }
-                            _ => println!("{:?}", frame),
-                        }
-                    }
-                    0x24 => {
-                        match (data_frame
-                            .data()
-                            .get(0..4)
-                            .map(|f| f.try_into().map(f32::from_le_bytes)),)
-                        {
-                            (Some(Ok(temp)),) => {
-                                println!("temp: {temp}")
-                            }
-                            _ => println!("{:?}", frame),
-                        }
-                    }
-                    _ => println!(
-                        "{:?}{}",
-                        frame,
-                        if frame.is_extended() { " ext" } else { "" }
-                    ),
-                },
+                }
                 (_, _) => println!(
                     "{:?}{}",
                     frame,
