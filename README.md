@@ -1,2 +1,2 @@
-# rpi_can
+# tcu_rpi
 Reads CAN data
